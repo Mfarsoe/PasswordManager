@@ -1,6 +1,7 @@
 # Password Manager CLI
 
 En kommandolinjeapplikation til sikker opbevaring af adgangskoder til websider.
+Læs Mini-projekt om password manager.pdf for detaljeret projektbeskrivelse.
 
 ## Funktionalitet
 
