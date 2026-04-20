@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { encryptVault, decryptVault } = require('./config/encryption');
 
-const VAULT_PATH = path.join(__dirname, 'vault.json');
+const VAULT_PATH = path.join(__dirname, 'vault.encrypted');
 const ITERATIONS = 120000;
 const KEY_LENGTH = 32;
 const DIGEST = 'sha256';
@@ -58,19 +59,20 @@ function decryptJson(envelope, key) {
   return JSON.parse(decrypted.toString('utf8'));
 }
 
-// Reads and parses the vault file from disk.
+// Reads and parses the encrypted vault file from disk.
 function readVault() {
   if (!fs.existsSync(VAULT_PATH)) {
     throw new Error('Vault findes ikke. Kør: node manager.js init <masterPassword>');
   }
 
   const raw = fs.readFileSync(VAULT_PATH, 'utf8');
-  return JSON.parse(raw);
+  return decryptVault(raw);
 }
 
-// Writes the vault object to disk as formatted JSON.
+// Writes the vault object to disk as encrypted data.
 function writeVault(vault) {
-  fs.writeFileSync(VAULT_PATH, JSON.stringify(vault, null, 2), 'utf8');
+  const encrypted = encryptVault(vault);
+  fs.writeFileSync(VAULT_PATH, encrypted, 'utf8');
 }
 
 // Validates the master password by decrypting the stored password check value.
@@ -122,7 +124,7 @@ function cmdInit(masterPassword) {
   }
 
   if (fs.existsSync(VAULT_PATH)) {
-    throw new Error('Vault findes allerede. Slet vault.json hvis du vil starte forfra.');
+    throw new Error('Vault findes allerede. Slet vault.encrypted hvis du vil starte forfra.');
   }
 
   const salt = crypto.randomBytes(16);
@@ -144,7 +146,7 @@ function cmdInit(masterPassword) {
   };
 
   writeVault(vault);
-  console.log('Vault oprettet i vault.json');
+  console.log('Vault oprettet som krypteret fil (vault.encrypted)');
 }
 
 // Adds a new encrypted entry to the vault.

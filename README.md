@@ -1,23 +1,26 @@
 # Password Manager CLI
 
-En simpel kommandolinjeapplikation til sikker opbevaring af adgangskoder til websider.
+En kommandolinjeapplikation til sikker opbevaring af adgangskoder til websider.
 
 ## Funktionalitet
 
-- **Sikkert lager** i form af en JSON-fil krypteret med master password
-- **AES-256-GCM** kryptering for sikker dataopbevaring
+- **Sikkert lager** med dobbelt lag af kryptering
+  - **Lag 1:** AES-256-CBC filkryptering (hele vault-filen)
+  - **Lag 2:** AES-256-GCM for individuelle entries med master password
+- **Krypteret fillagring** - vault gemmes som `vault.encrypted`. Vault filen selv er krypteret med AES-256-CBC for ekstra sikkerhedslag
+- **Autogenereret nøgle** gemmes sikkert i `vault.key` (udelukket fra git)
 - **Entries gemmes** med site, brugernavn og password
-- **Password-generering** kan bruges i stedet for manuelt password
 - **Dekryptering** af data ved visning
 - **Masterpassword-validering** ved hver operation
+- **Password-generering** kan bruges i stedet for manuelt password
+
+## Ekstraopgaver
+- **Password Generering**
+- **Fil Kryptering**
 
 ## Installation
 
-Programmet bruger Node.js indbyggede `crypto` modul, så der kræves ingen ekstra pakker.
-
-```bash
-npm install
-```
+Programmet kræver ingen ekstra pakker. Der er derfor ikke brug for npm install
 
 ## Brug
 
@@ -34,7 +37,9 @@ node manager.js init <masterPassword>
 node manager.js init myMasterPassword
 ```
 
-Dette opretter filen `vault.json` som indeholder det krypterede lager.
+Dette opretter to filer:
+- `vault.encrypted` - Krypteret vault-fil (hele filindholdet er krypteret)
+- `vault.key` - Hemmeligt nøgle til fil-dekryptering (skal aldrig committes)
 
 ---
 
@@ -97,10 +102,11 @@ Output viser alle gemte entries med:
 ```bash
 # 1. Opret vault
 node manager.js init myMasterPassword
-# Output: Vault oprettet i vault.json
+# Output: Vault key genereret og gemt i vault.key
+# Output: Vault oprettet som krypteret fil (vault.encrypted)
 
 # 2. Gem en Gmail-adgangskode
-node manager.js add myMasterPassword "Gmail" "min@gmail.com" "SecurePassword123"
+node manager.js add myMasterPassword "Gmail" "min@gmail.com" "Kodeord123"
 # Output: Entry gemt for site: Gmail
 
 # 3. Gem en Facebook-adgangskode
@@ -116,69 +122,55 @@ node manager.js list myMasterPassword
 # #1
 # Site     : Gmail
 # Bruger   : min@gmail.com
-# Password : SecurePassword123
+# Password : Kodeord123
 # Oprettet : 2026-04-13T18:14:19.208Z
 #
 # #2
 # Site     : Facebook
 # Bruger   : min.profil
-# Password : AnotherPassword456
+# Password : fDkFE4Rl%#545F12sd
 # Oprettet : 2026-04-13T18:14:26.875Z
 ```
 
 ---
 
-## Sikkerhed
+## Programinfo
+
+### Dobbelt lag kryptering
+
+#### Lag 1: Filkryptering (vault.encrypted)
+- **Algoritme:** AES-256-CBC 
+- **Nøgle:** 32 bytes tilfældig nøgle genereret og gemt i `vault.key`
+- **IV:** 16 bytes generet for hver fil-lagring
+
+#### Lag 2: Entry-kryptering (inde i vault)
 
 ### Kryptering
-- **Algoritme:** AES-256-GCM (authenticated encryption)
+- **Algoritme:** AES-256-GCM 
 - **Nøgleherleding:** PBKDF2 med SHA-256
 - **Iterationer:** 120.000 (OWASP anbefaling)
 - **Tilfældig salt:** 16 bytes for hver vault
 - **Tilfældig IV:** 12 bytes for hver entry
 
-### Master Password validering
+### Filer og sikkerhed
+- **vault.encrypted:** Hele vault-filen er krypteret med AES-256-CBC
+- **vault.key:** Nøglen til fil-dekryptering (skal være privat og bør aldrig committes)
 - Master password valideres ved hver `add` og `list` operation
 - Hvis forkert password indtastes, får man fejlen: "Forkert master password."
-- Der er ingen måde at gendanne password på hvis det glemmes
-
-### Vault struktur
-```json
-{
-  "version": 1,
-  "createdAt": "2026-04-13T18:14:19.208Z",
-  "kdf": {
-    "algorithm": "pbkdf2",
-    "digest": "sha256",
-    "iterations": 120000,
-    "keyLength": 32,
-    "salt": "..."
-  },
-  "passwordCheck": {
-    "iv": "...",
-    "tag": "...",
-    "data": "..."
-  },
-  "entries": [
-    {
-      "iv": "...",
-      "tag": "...",
-      "data": "..."
-    }
-  ]
-}
-```
+- Der er ingen måde at gendanne master password på hvis det glemmes
 
 ---
-
 ## Fejlfinding
 
 ### "Vault findes ikke"
 - Du skal først køre `init` for at oprette en vault
+- Filen skal hedde `vault.encrypted`
+
+### "Kan ikke dekryptere vault"
+- **VIGTIG:** Hvis `vault.key` bliver slettet, kan du ikke længere tilgå din vault
 
 ### "Forkert master password"
-- Kontroller at du bruger det korrekte master password
-- Passwords er case-sensitive (stor/små bogstaver betyder noget)
+- Passwords er case-sensitive 
 
 ### "Manglende parametre"
 - Check at du bruger den rigtige kommando syntax
@@ -193,6 +185,6 @@ node manager.js list myMasterPassword
 
 | Kommando | Brug | Output |
 |----------|------|--------|
-| `init` | Opretter nyt lager | "Vault oprettet i vault.json" |
+| `init` | Opretter nyt lager | "Vault oprettet" |
 | `add` | Gemmer ny adgangskode (eller genererer en) | "Entry gemt for site: [site]" |
 | `list` | Viser alle adgangskoder | Detaljer for hver entry |
