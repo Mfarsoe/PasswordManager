@@ -31,8 +31,8 @@ function deriveKey(masterPassword, saltB64, iterations = ITERATIONS) {
   );
 }
 
-// Encrypts a JSON object using AES-256-GCM and returns an envelope.
-function encryptJson(payload, key) {
+// Encrypts a payload object using AES-256-GCM and returns an envelope.
+function encryptRecord(payload, key) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([
@@ -48,8 +48,8 @@ function encryptJson(payload, key) {
   };
 }
 
-// Decrypts an AES-256-GCM envelope and returns the original JSON object.
-function decryptJson(envelope, key) {
+// Decrypts an AES-256-GCM envelope and returns the original payload object.
+function decryptRecord(envelope, key) {
   const iv = fromB64(envelope.iv);
   const tag = fromB64(envelope.tag);
   const data = fromB64(envelope.data);
@@ -78,7 +78,7 @@ function writeVault(vault) {
 // Validates the master password by decrypting the stored password check value.
 function validateMasterPassword(masterPassword, vault) {
   const key = deriveKey(masterPassword, vault.kdf.salt, vault.kdf.iterations);
-  const check = decryptJson(vault.passwordCheck, key);
+  const check = decryptRecord(vault.passwordCheck, key);
   if (check.value !== CHECK_TEXT) {
     throw new Error('Forkert master password.');
   }
@@ -129,7 +129,7 @@ function cmdInit(masterPassword) {
 
   const salt = crypto.randomBytes(16);
   const key = deriveKey(masterPassword, toB64(salt), ITERATIONS);
-  const passwordCheck = encryptJson({ value: CHECK_TEXT }, key);
+  const passwordCheck = encryptRecord({ value: CHECK_TEXT }, key);
 
   const vault = {
     version: 1,
@@ -168,7 +168,7 @@ function cmdAdd(masterPassword, site, username, password) {
     createdAt: new Date().toISOString()
   };
 
-  vault.entries.push(encryptJson(entry, key));
+  vault.entries.push(encryptRecord(entry, key));
   writeVault(vault);
   console.log(`Entry gemt for site: ${site}`);
   if (!password || password === '--generate' || password === '-g' || password.startsWith('--generate=')) {
@@ -193,7 +193,7 @@ function cmdList(masterPassword) {
   console.log(`Fundet ${vault.entries.length} entries:\n`);
 
   vault.entries.forEach((encryptedEntry, index) => {
-    const entry = decryptJson(encryptedEntry, key);
+    const entry = decryptRecord(encryptedEntry, key);
     console.log(`#${index + 1}`);
     console.log(`Site     : ${entry.site}`);
     console.log(`Bruger   : ${entry.username}`);
