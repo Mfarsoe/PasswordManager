@@ -1,7 +1,6 @@
 # Password Manager CLI
 
 En kommandolinjeapplikation til sikker opbevaring af adgangskoder til websider.
-Læs Mini-projekt om password manager.pdf for detaljeret projektbeskrivelse.
 
 ## Funktionalitet
 
@@ -132,3 +131,4 @@ node manager.js list myMasterPassword
 # Password : fDkFE4Rl%#545F12sd
 # Oprettet : 2026-04-13T18:14:26.875Z
 ```
+
